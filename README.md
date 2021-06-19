@@ -1,2 +1,2 @@
 # colorful
-🌈 The fast entry into Kadena network
+🌈 The best entrance to the Kadena network.
