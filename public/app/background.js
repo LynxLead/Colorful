@@ -1,86 +1,28 @@
 console.log('Hello background');
 
+(() => {
+  let toRecordHeartbeat = false;
 
-(function() {
-  const tabStorage = {};
-  const networkFilters = {
-      urls: [
-          "*://colorblock.art/*"
-      ]
-  };
-
-  chrome.webRequest.onBeforeRequest.addListener((details) => {
-      const { tabId, requestId } = details;
-      if (!tabStorage.hasOwnProperty(tabId)) {
-          return;
+  chrome.runtime.onConnect.addListener((port) => {
+    console.log('in connect', port);
+    console.assert(port.name === 'heartbeat');
+    port.onMessage.addListener((msg) => {
+      console.log('in background onMessage', msg);
+      if (msg.status === 'open') {
+        toRecordHeartbeat = true;
+        chrome.storage.local.set({ 'heartbeat': new Date().getTime() });
+      } else {
+        toRecordHeartbeat = false;
+        chrome.storage.local.set({ 'heartbeat': -1 });
       }
-
-      tabStorage[tabId].requests[requestId] = {
-          requestId: requestId,
-          url: details.url,
-          startTime: details.timeStamp,
-          status: 'pending'
-      };
-      console.log(tabStorage[tabId].requests[requestId]);
-  }, networkFilters);
-
-  chrome.webRequest.onCompleted.addListener((details) => {
-      const { tabId, requestId } = details;
-      if (!tabStorage.hasOwnProperty(tabId) || !tabStorage[tabId].requests.hasOwnProperty(requestId)) {
-          return;
-      }
-
-      const request = tabStorage[tabId].requests[requestId];
-
-      Object.assign(request, {
-          endTime: details.timeStamp,
-          requestDuration: details.timeStamp - request.startTime,
-          status: 'complete'
-      });
-      console.log(tabStorage[tabId].requests[details.requestId]);
-  }, networkFilters);
-
-  chrome.webRequest.onErrorOccurred.addListener((details)=> {
-      const { tabId, requestId } = details;
-      if (!tabStorage.hasOwnProperty(tabId) || !tabStorage[tabId].requests.hasOwnProperty(requestId)) {
-          return;
-      }
-
-      const request = tabStorage[tabId].requests[requestId];
-      Object.assign(request, {
-          endTime: details.timeStamp,           
-          status: 'error',
-      });
-      console.log(tabStorage[tabId].requests[requestId]);
-  }, networkFilters);
-
-  chrome.tabs.onActivated.addListener((tab) => {
-      const tabId = tab ? tab.tabId : chrome.tabs.TAB_ID_NONE;
-      if (!tabStorage.hasOwnProperty(tabId)) {
-          tabStorage[tabId] = {
-              id: tabId,
-              requests: {},
-              registerTime: new Date().getTime()
-          };
-      }
-  });
-  chrome.tabs.onRemoved.addListener((tab) => {
-      const tabId = tab.tabId;
-      if (!tabStorage.hasOwnProperty(tabId)) {
-          return;
-      }
-      tabStorage[tabId] = null;
+    });
   });
 
-  
-  chrome.runtime.onMessage.addListener((msg, sender, response) => {
-    switch (msg.type) {
-        case 'popupInit':
-            response(tabStorage[msg.tabId]);
-            break;
-        default:
-            response('unknown request');
-            break;
+  // loop and record heartbeat
+  setInterval(() => {
+    console.log('toRecordHeartbeat', toRecordHeartbeat);
+    if (toRecordHeartbeat) {
+      chrome.storage.local.set({ 'heartbeat': new Date().getTime() });
     }
-  });
-}());
+  }, 1000);
+})();

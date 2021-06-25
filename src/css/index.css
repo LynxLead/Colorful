@@ -1,3 +1,59 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  .w-120 { 
+    width: 30rem; 
+  }
+  .h-120 { 
+    height: 30rem; 
+  }
+  .text-xxs {
+    font-size: 10px;
+    -webkit-transform-origin: top left;
+    -webkit-transform: scale(0.83);
+  }
+  .text-xxs-r {
+    font-size: 10px;
+    -webkit-transform-origin: top right;
+    -webkit-transform: scale(0.83);
+  }
+  .font-work {
+    @apply font-sans;
+    font-family: "Work Sans";
+  }
+}
+
+@layer components {
+  
+  .bg-cb-pink {
+    background-color: rgb(254, 94, 174);
+  }  
+  .bd-cb-pink {
+    border-color: rgb(254, 94, 174);
+  }
+  .text-cb-pink {
+    color: rgb(254, 94, 174);
+  }
+  .bg-cb-gray {
+    background-color: rgb(252, 253, 254);
+  }
+
+  /* Hover */
+  .hover-pink:hover {
+    @apply ring-1 ring-pink-500;
+  }
+  .hover-gray:hover {
+    @apply ring-1 ring-gray-500;
+  }
+
+  /* Focus */
+  button:focus, input:focus, select:focus {
+    outline: none;
+  }
+}
+
+form[data-role='register kda account'] input {
+  @apply border rounded w-full py-1 px-3
+}
