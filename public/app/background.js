@@ -44,7 +44,6 @@ import Pact from 'pact-lang-api';
             secretKey: decryptKey(wallet.secretKey, passwordHash),
           }))
         };   // store account in memory
-        console.log(decryptedAccount);
       });
       return {
         status: 'success',
@@ -104,9 +103,7 @@ import Pact from 'pact-lang-api';
   };
 
   const signCmd = async (cmd, walletIndex) => {
-    console.log(decryptedAccount);
     const keyPair = decryptedAccount.wallets[walletIndex];
-    console.log(keyPair, cmd);
     const signed = Pact.crypto.sign(cmd, keyPair);
     signed.cmd = cmd;
     return {

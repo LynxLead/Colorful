@@ -12,18 +12,8 @@ export const fetchLocal = (code) => {
   return Pact.fetch.local(localCmd, apiHost);
 };
 
-const mkReq = (cmd) => {
-  return {
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    method: 'POST',
-    body: JSON.stringify(cmd)
-  };
-};
-
 export const fetchSend = (cmd) => {
-  return fetch(`${apiHost}/api/v1/send`, mkReq(Pact.api.mkPublicSend(cmd)));
+  return Pact.wallet.sendSigned(cmd, apiHost);
 };
 
 export const getSendCmd = (cmd) => {

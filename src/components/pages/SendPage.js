@@ -61,9 +61,9 @@ export const SendPage = (props) => {
       port.onMessage.addListener(async (msg) => {
         if (msg.action === types.SIGN_CMD) {
           console.log('get response in signCmd', msg);
-          const pureFetch = fetchSend(msg.data);
+          const requestForSend = fetchSend(msg.data);
           showLoading();
-          pureFetch.then(res => res.json()).then(data => {
+          requestForSend.then(data => {
             console.log(data);
             const requestKey = data.requestKeys[0];
             const listenCmd = {

@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
-import { Route } from 'react-router-dom';
+import { Route, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
-import { networkId, apiHost, modules, heartbeatValidity, gasPrice, gasLimit, ttl } from '../../config';
 import { encryptPassword } from '../../utils/security';
 import Transfer from '../common/Transfer';
 import AssetRows from '../common/AssetRows';
@@ -110,10 +109,12 @@ export const HomePage = (props) => {
   return account === undefined ? <></> : (
     <div data-role='homepage container' className='w-full'>
       <div data-role='header' className='w-full flex items-center justify-between'>
-        <div className='flex items-center'>
-          <img src='/img/colorful_logo.svg' className='w-16 my-5' alt='colorful logo' />
-          <span className='text-xl text-cb-pink font-bold'>Colorful</span>
-        </div>
+        <Link to='/'>
+          <div className='flex items-center'>
+            <img src='/img/colorful_logo.svg' className='w-16 my-5' alt='colorful logo' />
+            <span className='text-xl text-cb-pink font-bold'>Colorful</span>
+          </div>
+        </Link>
         <button onClick={ () => lockAccount() }>Lock</button>
       </div>
       {
