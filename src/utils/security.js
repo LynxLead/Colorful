@@ -1,13 +1,9 @@
-import ph from 'password-hash';
+import SHA3 from 'crypto-js/sha3';
 import AES from 'crypto-js/aes';
 import Utf8 from 'crypto-js/enc-utf8';
 
-export const savePassword = (password) => {
-  return ph.generate(password);
-};
-
-export const verifyPassword = (password, passwordHash) => {
-  return ph.verify(password, passwordHash);
+export const encryptPassword = (password) => {
+  return SHA3(password).toString();
 };
 
 export const encryptKey = (key, secret) => {

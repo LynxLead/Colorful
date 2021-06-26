@@ -12,7 +12,7 @@ export const cookiesKey = 'colorful';
 export const saltRounds = 10;
 
 export const networkId = 'mainnet01';
-export const chainId = '0';
+export const chainId = '7';
 export const apiHost = `https://api.chainweb.com/chainweb/0.0/${networkId}/chain/${chainId}/pact`;
 export const gasPrice = 0.000000000001;
 export const gasLimit = 2000;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Route, Redirect } from 'react-router-dom';
+import { HashRouter as Router, Route, Redirect, Switch } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
@@ -13,19 +13,13 @@ import { savePort } from '../store/actions/actionCreartor';
 /* global chrome */
 export const App = (props) => {
 
-  const { loading, savePort } = props;
+  const { loading, port, savePort } = props;
 
-  useEffect(() => {
-    const createPort = () => {
-      var port = chrome.runtime.connect({name: 'heartbeat'});
-      port.onMessage.addListener(msg => {
-        console.log('onMessage', msg);
-      });
-      savePort(port);
-    };
-
-    createPort();
-  }, []);
+  if (!port) {
+    console.log('create new port');
+    const newPort = chrome.runtime.connect({name: 'auth'});
+    savePort(newPort);
+  }
 
   return (
     <div data-role='app-container' className='w-2/3 mx-auto relative'>
@@ -41,22 +35,24 @@ export const App = (props) => {
             </div>
           </div>
         }
-        <Route path='/popup'>
-          <Router basename='/popup'>
-            <button onClick={ () => chrome.tabs.create({ url: '/index.html#/initialize' }) }>Hello</button>
-          </Router>
-        </Route>
-        <Route path='/initialize'>
-          <Router basename='/initialize'>
-            <InitializePage />
-          </Router>
-        </Route>
-        <Route path='/home'>
-          <Router basename='/home'>
-            <HomePage />
-          </Router>
-        </Route>
-        <Redirect from='/' to='/home' />
+        <Switch>
+          <Route path='/popup'>
+            <Router basename='/popup'>
+              <button onClick={ () => chrome.tabs.create({ url: '/index.html#/initialize' }) }>Hello</button>
+            </Router>
+          </Route>
+          <Route path='/initialize'>
+            <Router basename='/initialize'>
+              <InitializePage />
+            </Router>
+          </Route>
+          <Route path='/home'>
+            <Router basename='/home'>
+              <HomePage />
+            </Router>
+          </Route>
+          <Redirect from='/' to='/home' />
+        </Switch>
       </Router>
     </div>
   );
@@ -68,7 +64,8 @@ App.propTypes = {
 };
 
 const mapStateToProps = state => ({
-  loading: state.root.loading
+  loading: state.root.loading,
+  port: state.root.port
 });
 
 const mapDispatchToProps = dispatch => ({
