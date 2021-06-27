@@ -52,13 +52,16 @@ export const SendPage = (props) => {
     console.log('cmd', cmd);
     const unsignedCmd = getSendCmd(cmd);
     const action = types.SIGN_CMD;
-    port.postMessage({ action, cmd: unsignedCmd.cmd, walletIndex: 0 });
+    port.postMessage({ action, cmd: unsignedCmd.cmd, walletIndex: 0, context: 'send' });
   };
 
   useEffect(() => {
     // set up port
     const setupPort = () => {
       port.onMessage.addListener(async (msg) => {
+        if (msg.context !== 'send') {
+          return;
+        }
         if (msg.action === types.SIGN_CMD) {
           console.log('get response in signCmd', msg);
           const requestForSend = fetchSend(msg.data);
@@ -83,20 +86,20 @@ export const SendPage = (props) => {
   }, []);
 
   return (
-    <div className='w-full flex flex-col items-center'>
+    <div className='w-120 mx-auto flex flex-col items-center'>
       <label className='text-lg font-bold mt-10 mb-2'>Sender <span className='text-xs text-green-500 ml-5'>On Chain {chainId}</span></label>
       <div className='w-full flex items-center justify-center h-12'>
-        <input type='text' className='w-3/4 h-full border px-2' value={wallet.address} readOnly />
+        <input type='text' className='w-3/4 h-full border px-3' value={wallet.address} readOnly />
       </div>
       <label className='text-lg font-bold mt-10 mb-2'>Receiver <span className='text-xs text-green-500 ml-5'>On Chain {chainId}</span></label>
       <div className='w-full flex items-center justify-center h-12'>
-        <input type='text' className='w-3/4 h-full border' onChange={ (e) => setTxData({...txData, receiver: e.target.value}) } />
+        <input type='text' className='w-3/4 h-full border px-3' onChange={ (e) => setTxData({...txData, receiver: e.target.value}) } />
       </div>
       <label className='text-lg font-bold mt-10 mb-2'>Amount</label>
       <div className='w-full flex items-center justify-center h-12'>
-        <input type='number' className='w-3/4 h-full border' onChange={ (e) => setTxData({...txData, amount: parseFloat(e.target.value)}) } />
+        <input type='number' className='w-3/4 h-full border px-3' onChange={ (e) => setTxData({...txData, amount: parseFloat(e.target.value)}) } />
       </div>
-      <button className='w-36 flex items-center justify-center h-12' onClick={ () => clickTransfer() }>
+      <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10' onClick={ () => clickTransfer() }>
         Make Transfer
       </button>
     </div>

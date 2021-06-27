@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import * as fa from '@fortawesome/free-solid-svg-icons';
+import { Link } from 'react-router-dom';
 
 export const AssetRows = (props) => {
   const { wallet } = props;
@@ -15,7 +16,9 @@ export const AssetRows = (props) => {
           {wallet.balance.coin} KDA
         </div>
         <div>
-          <FontAwesomeIcon icon={fa.faArrowRight} size='2x' className='text-cb-pink' />
+          <Link to='/asset-kda'>
+            <FontAwesomeIcon icon={fa.faArrowRight} size='2x' className='text-cb-pink cursor-pointer' />
+          </Link>
         </div>
       </div>
     </div>

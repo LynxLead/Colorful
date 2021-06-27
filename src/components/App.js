@@ -22,8 +22,8 @@ export const App = (props) => {
   }
 
   return (
-    <div data-role='app-container' className='w-2/3 mx-auto relative'>
-      <Router>
+    <div data-role='app-container' className='relative'>
+      <Router basename='/'>
         <ToastContainer position='top-center' />
         { loading && 
           <div 
@@ -36,20 +36,14 @@ export const App = (props) => {
           </div>
         }
         <Switch>
-          <Route path='/popup'>
-            <Router basename='/popup'>
-              <button onClick={ () => chrome.tabs.create({ url: '/index.html#/initialize' }) }>Hello</button>
-            </Router>
-          </Route>
           <Route path='/initialize'>
-            <Router basename='/initialize'>
-              <InitializePage />
-            </Router>
+            <InitializePage />
           </Route>
           <Route path='/home'>
-            <Router basename='/home'>
-              <HomePage />
-            </Router>
+            <HomePage baseHash='home' />
+          </Route>
+          <Route path='/popup'>
+            <HomePage baseHash='popup' />
           </Route>
           <Redirect from='/' to='/home' />
         </Switch>

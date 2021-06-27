@@ -1,6 +1,6 @@
 import * as types from '../../src/store/actions/actionTypes';
 import { encryptPassword, decryptKey, encryptKey } from '../../src/utils/security';
-import Pact from 'pact-lang-api';
+import Pact, { wallet } from 'pact-lang-api';
 
 (() => {
   // it's safe to store credentials in self invoking function
@@ -76,7 +76,17 @@ import Pact from 'pact-lang-api';
   };
 
   const getAccount = async () => {
-    if (decryptedAccount.passwordHash === null) {
+    const account = await new Promise((resolve) => {
+      chrome.storage.local.get('account', (data) => {
+        resolve(data.account);
+      });
+    });
+    if (!account) {
+      return {
+        status: 'failure',
+        data: 'Account is not initialized'
+      };
+    } else if (decryptedAccount.passwordHash === null) {
       return {
         status: 'failure',
         data: 'Account is locked'
@@ -118,6 +128,22 @@ import Pact from 'pact-lang-api';
     };
   };
 
+  const unlockSecret = async (passwordHash, walletIndex) => {
+    const isValid = await verifyPassword(passwordHash);
+    if (isValid) {
+      const secretKey = decryptedAccount.wallets[walletIndex].secretKey;
+      return {
+        status: 'success',
+        data: secretKey
+      };
+    } else {
+      return {
+        status: 'failure',
+        data: 'password is not correct'
+      };
+    }
+  };
+
   chrome.runtime.onConnect.addListener((port) => {
     console.assert(port.name === 'auth');
     port.onMessage.addListener(async (msg) => {
@@ -144,13 +170,23 @@ import Pact from 'pact-lang-api';
         case types.SIGN_CMD:
           data = await signCmd(msg.cmd, msg.walletIndex);
           break;
+        case types.UNLOCK_SECRET:
+          data = await unlockSecret(msg.passwordHash, msg.walletIndex);
+          break;
         default:
       }
       const response = {
         ...data,
         action: msg.action,
+        context: msg.context
       };
       port.postMessage(response);
     });
+  });
+
+  chrome.runtime.onInstalled.addListener((details) => {
+    if (details.reason === 'install') {
+      chrome.tabs.create({ url: '/index.html#/initialize' });
+    }
   });
 })();

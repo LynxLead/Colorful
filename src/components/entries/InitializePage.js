@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
-import { useHistory } from 'react-router';
-import { Route, Link, Redirect, Switch } from 'react-router-dom';
+import { useLocation, useHistory } from 'react-router';
+import { HashRouter as Router, Route, Link, Redirect, Switch } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import Pact from 'pact-lang-api';
 
@@ -22,6 +22,7 @@ export const InitializePage = (props) => {
   const repeatedPasswordRef = useRef();
 
   const history = useHistory();
+  console.log('location in initial', useLocation());
 
   const { showLoading, hideLoading, port } = props;
   const keyPairs = Pact.crypto.genKeyPair();
@@ -33,7 +34,7 @@ export const InitializePage = (props) => {
     </div>
   );
 
-  const createWallet = async () => {
+  const createWallet = async (fromImport=false) => {
     const { address, publicKey, secretKey, password, repeatedPassword } = getRefValues();
     if (address.length < createWalletConfig.minAddressLength) {
       toast.warn('Address is too short');
@@ -64,21 +65,26 @@ export const InitializePage = (props) => {
       return;
     }
 
-    // check existance
-    showLoading();
 
-    const url = `${serverUrl}/colorful/create-wallet`;
-    const postData = {
-      address,
-      public_key: publicKey
-    };
-    const result = await fetch(url, mkReq(postData))
-      .then(res => res.json())
-      .catch(error => {
-        console.log(error);
-        toast.error(error.message);
-      });
-    hideLoading();
+    let result;
+    if (fromImport) {
+      result = 1;
+    } else {
+      // create
+      showLoading();
+      const url = `${serverUrl}/colorful/create-wallet`;
+      const postData = {
+        address,
+        public_key: publicKey
+      };
+      result = await fetch(url, mkReq(postData))
+        .then(res => res.json())
+        .catch(error => {
+          console.log(error);
+          toast.error(error.message);
+        });
+      hideLoading();
+    }
 
     if (result) {
       // encrypt keys with password
@@ -92,7 +98,7 @@ export const InitializePage = (props) => {
         }]
       };
 
-      port.postMessage({ action: types.CREATE_ACCOUNT, account });
+      port.postMessage({ action: types.CREATE_ACCOUNT, account, context: 'initialize' });
     }
   };
 
@@ -123,7 +129,7 @@ export const InitializePage = (props) => {
     console.log(details);
     if (details) {
       console.log(details);
-      createWallet();
+      createWallet(true);
     } else {
       toast.warning('Address is not existing');
     }
@@ -150,6 +156,9 @@ export const InitializePage = (props) => {
     // set up port
     const setupPort = () => {
       port.onMessage.addListener(async (msg) => {
+        if (msg.context !== 'initialize') {
+          return;
+        }
         if (msg.action === types.CREATE_ACCOUNT) {
           console.log('get response in createAccount', msg);
           clearRefValues();
@@ -163,99 +172,101 @@ export const InitializePage = (props) => {
 
   return (
     <div className='w-full'>
-      <Switch>
-        <Route path='/welcome'>
-          <div data-role='app container' className='flex flex-col items-center pt-5 font-work w-120 mx-auto'>
-            <img src='/img/colorful_logo.svg' className='w-32 my-10' alt='colorful logo' />
-            <p className='text-xl font-medium'>InitializePage To Colorful</p>
-            <div className='text-center my-5'>
-              <p>You will connect to Kadena network through Colorful.</p>
-              <p>Glad to see you.</p>
+      <Router basename='/initialize'>
+        <Switch>
+          <Route path='/welcome'>
+            <div data-role='app container' className='flex flex-col items-center pt-5 font-work w-120 mx-auto'>
+              <img src='/img/colorful_logo.svg' className='w-32 my-10' alt='colorful logo' />
+              <p className='text-xl font-medium'>Initialize Page To Colorful</p>
+              <div className='text-center my-5'>
+                <p>You will connect to Kadena network through Colorful.</p>
+                <p>Glad to see you.</p>
+              </div>
+              <Link to='/select-action'>
+                <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10'>
+                  Start Using
+                </button>
+              </Link>
             </div>
-            <Link to='/select-action'>
+          </Route>
+          <Route path='/select-action'>
+            {header}
+            <div>
+              <p className='my-10 text-center text-xl font-semibold'>Using Colorful for the first time?</p>
+              <div className='flex h-80'>
+                <div className='w-1/2 h-full px-5'>
+                  <div className='h-full border rounded flex flex-col items-center pt-10'>
+                    <img src='/img/download.png' className='w-16 h-16' alt='download' />
+                    <p className='text-lg mt-5'>NO, I have existing private key.</p>
+                    <p className='text-xs my-2 text-gray-500'>Import your existing private key</p>
+                    <Link to='/import-wallet'>
+                      <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10'>Import Wallet</button>
+                    </Link>
+                  </div>
+                </div>
+                <div className='w-1/2 h-full px-5'>
+                  <div className='h-full border rounded flex flex-col items-center pt-10'>
+                    <img src='/img/add.png' className='w-16 h-16' alt='download' />
+                    <p className='text-lg mt-5'>First time, setup right now!</p>
+                    <p className='text-xs my-2 text-gray-500'>Will create private key for your new wallet</p>
+                    <Link to='/create-wallet'>
+                      <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10'>Create Wallet</button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </Route>
+          <Route path='/create-wallet'>
+            {header}
+            <div>
+              <form data-role='register kda account' className='flex flex-col'>
+                <label className='mt-5 mb-2'>Set Your address <span className='text-xs text-green-500 ml-5'>Default same with public key, but you can set a custom one.</span></label>
+                <input type='text' defaultValue={keyPairs.publicKey} ref={addressRef} />
+                <label className='mt-5 mb-2'>Your public key</label>
+                <input type='text' className='bg-gray-300' value={keyPairs.publicKey} ref={publicKeyRef} readOnly />
+                <label className='mt-5 mb-2'>Your private key <span className='text-xs text-red-500 ml-5'>You must store it in safe place.</span></label>
+                <input type='text' className='bg-gray-300' value={keyPairs.secretKey} ref={secretKeyRef} readOnly />
+                <label className='mt-5 mb-2'>Set password for your account</label>
+                <input type='password' ref={passwordRef} />
+                <label className='mt-5 mb-2'>Confirm your password</label>
+                <input type='password' ref={repeatedPasswordRef} />
+                <button className='px-8 py-2 bg-cb-pink text-white rounded mt-20' onClick={ () => createWallet() }>Generate</button>
+              </form>
+            </div>
+          </Route>
+          <Route path='/import-wallet'>
+            {header}
+            <div>
+              <form data-role='register kda account' className='flex flex-col'>
+                <label className='mt-5 mb-2'>Set Your address</label>
+                <input type='text' ref={addressRef} />
+                <div hidden>
+                  <input type='text' className='bg-gray-300'  ref={publicKeyRef} />
+                </div>
+                <label className='mt-5 mb-2'>Your private key</label>
+                <input type='text' ref={secretKeyRef} />
+                <label className='mt-5 mb-2'>Set password for your account</label>
+                <input type='password' ref={passwordRef} />
+                <label className='mt-5 mb-2'>Confirm your password</label>
+                <input type='password' ref={repeatedPasswordRef} />
+                <button className='px-8 py-2 bg-cb-pink text-white rounded mt-20' onClick={ () => importWallet() }>Import</button>
+              </form>
+            </div>
+          </Route>
+          <Route path='/finish'>
+            {header}
+            <div className='mt-10 flex flex-col items-center'>
+              <p className='text-lg'>Congratulations!</p>
+              <p>You have finished wallet registration.</p>
               <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10'>
-                Start Using
+                <a href='/index.html'>Done</a>
               </button>
-            </Link>
-          </div>
-        </Route>
-        <Route path='/select-action'>
-          {header}
-          <div>
-            <p className='my-10 text-center text-xl font-semibold'>Using Colorful for the first time?</p>
-            <div className='flex h-80'>
-              <div className='w-1/2 h-full px-5'>
-                <div className='h-full border rounded flex flex-col items-center pt-10'>
-                  <img src='/img/download.png' className='w-16 h-16' alt='download' />
-                  <p className='text-lg mt-5'>NO, I have existing private key.</p>
-                  <p className='text-xs my-2 text-gray-500'>Import your existing private key</p>
-                  <Link to='/import-wallet'>
-                    <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10'>Import Wallet</button>
-                  </Link>
-                </div>
-              </div>
-              <div className='w-1/2 h-full px-5'>
-                <div className='h-full border rounded flex flex-col items-center pt-10'>
-                  <img src='/img/add.png' className='w-16 h-16' alt='download' />
-                  <p className='text-lg mt-5'>First time, setup right now!</p>
-                  <p className='text-xs my-2 text-gray-500'>Will create private key for your new wallet</p>
-                  <Link to='/create-wallet'>
-                    <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10'>Create Wallet</button>
-                  </Link>
-                </div>
-              </div>
             </div>
-          </div>
-        </Route>
-        <Route path='/create-wallet'>
-          {header}
-          <div>
-            <form data-role='register kda account' className='flex flex-col'>
-              <label className='mt-5 mb-2'>Set Your address <span className='text-xs text-green-500 ml-5'>Default same with public key, but you can set a custom one.</span></label>
-              <input type='text' defaultValue={keyPairs.publicKey} ref={addressRef} />
-              <label className='mt-5 mb-2'>Your public key</label>
-              <input type='text' className='bg-gray-300' value={keyPairs.publicKey} ref={publicKeyRef} readOnly />
-              <label className='mt-5 mb-2'>Your private key <span className='text-xs text-red-500 ml-5'>You must store it in safe place.</span></label>
-              <input type='text' className='bg-gray-300' value={keyPairs.secretKey} ref={secretKeyRef} readOnly />
-              <label className='mt-5 mb-2'>Set password for your account</label>
-              <input type='password' ref={passwordRef} />
-              <label className='mt-5 mb-2'>Confirm your password</label>
-              <input type='password' ref={repeatedPasswordRef} />
-              <button className='px-8 py-2 bg-cb-pink text-white rounded mt-20' onClick={ () => createWallet() }>Generate</button>
-            </form>
-          </div>
-        </Route>
-        <Route path='/import-wallet'>
-          {header}
-          <div>
-            <form data-role='register kda account' className='flex flex-col'>
-              <label className='mt-5 mb-2'>Set Your address</label>
-              <input type='text' ref={addressRef} />
-              <div hidden>
-                <input type='text' className='bg-gray-300'  ref={publicKeyRef} />
-              </div>
-              <label className='mt-5 mb-2'>Your private key</label>
-              <input type='text' ref={secretKeyRef} />
-              <label className='mt-5 mb-2'>Set password for your account</label>
-              <input type='password' ref={passwordRef} />
-              <label className='mt-5 mb-2'>Confirm your password</label>
-              <input type='password' ref={repeatedPasswordRef} />
-              <button className='px-8 py-2 bg-cb-pink text-white rounded mt-20' onClick={ () => importWallet() }>Import</button>
-            </form>
-          </div>
-        </Route>
-        <Route path='/finish'>
-          {header}
-          <div className='mt-10 flex flex-col items-center'>
-            <p className='text-lg'>Congratulations!</p>
-            <p>You have finished wallet registration.</p>
-            <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10'>
-              <a href='/index.html'>Done</a>
-            </button>
-          </div>
-        </Route>
-        <Redirect from='/' to='/welcome' /> 
-      </Switch>
+          </Route>
+          <Redirect from='/' to='/welcome' /> 
+        </Switch>
+      </Router>
     </div>
   );
 };

@@ -12,3 +12,4 @@ export const VERIFY_PASSWORD = 'VERIFY_PASSWORD';
 export const GET_ACCOUNT = 'GET_ACCOUNT';
 export const GET_LOCK_STATUS = 'GET_LOCK_STATUS';
 export const SIGN_CMD = 'SIGN_CMD';
+export const UNLOCK_SECRET = 'UNLOCK_SECRET';

@@ -5,7 +5,7 @@ import { connect } from 'react-redux'
 export const AssetPage = (props) => {
   return (
     <div>
-      
+      in asset page
     </div>
   )
 }

@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
-import { Route, Link } from 'react-router-dom';
+import { HashRouter as Router, Route, Link, useHistory } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import { encryptPassword } from '../../utils/security';
 import Transfer from '../common/Transfer';
 import AssetRows from '../common/AssetRows';
 import ActivityRows from '../common/ActivityRows';
-import { hideLoading, showLoading } from '../../store/actions/actionCreartor';
 import SendPage from '../pages/SendPage';
+import SecretPage from '../pages/SecretPage';
+import AssetPage from '../pages/AssetPage';
+import { hideLoading, showLoading } from '../../store/actions/actionCreartor';
 import * as types from '../../store/actions/actionTypes';
 import { fetchLocal } from '../../utils/chainweb';
 
@@ -21,8 +23,9 @@ export const HomePage = (props) => {
   const [tabType, setTabType] = useState('assets');
 
   const passwordRef = useRef();
+  const history = useHistory();
 
-  const { port, showLoading, hideLoading } = props;
+  const { port, showLoading, hideLoading, baseHash } = props;
 
   const getWallet = () => {
     const { wallets } = account;
@@ -32,7 +35,7 @@ export const HomePage = (props) => {
 
   const updateAccount = () => {
     const action = types.GET_ACCOUNT;
-    port.postMessage({ action });
+    port.postMessage({ action, context: 'home' });
   };
 
   const updateBalance = async (account) => {
@@ -60,18 +63,21 @@ export const HomePage = (props) => {
     const password = passwordRef.current.value;
     const passwordHash = encryptPassword(password);
     const action = types.UNLOCK_ACCOUNT;
-    port.postMessage({ action, passwordHash });
+    port.postMessage({ action, passwordHash, context: 'home' });
   };
 
   const lockAccount = () => {
     const action = types.LOCK_ACCOUNT;
-    port.postMessage({ action });
+    port.postMessage({ action, context: 'home' });
   };
 
   useEffect(() => {
     // set up port
     const setupPort = () => {
       port.onMessage.addListener(async (msg) => {
+        if (msg.context !== 'home') {
+          return;
+        }
         if (msg.action === types.GET_ACCOUNT) {
           console.log('get response in getAccount', msg);
           if (msg.status === 'success') {
@@ -81,6 +87,8 @@ export const HomePage = (props) => {
             await updateBalance(account);
             hideLoading();
             setAccount(account);
+          } else if (msg.data === 'Account is not initialized') {
+            history.push('/initialize');
           } else {
             setAccount({});
           }
@@ -107,54 +115,70 @@ export const HomePage = (props) => {
   }, []);
 
   return account === undefined ? <></> : (
-    <div data-role='homepage container' className='w-full'>
-      <div data-role='header' className='w-full flex items-center justify-between'>
-        <Link to='/'>
-          <div className='flex items-center'>
-            <img src='/img/colorful_logo.svg' className='w-16 my-5' alt='colorful logo' />
-            <span className='text-xl text-cb-pink font-bold'>Colorful</span>
-          </div>
-        </Link>
-        <button onClick={ () => lockAccount() }>Lock</button>
-      </div>
-      {
-        account.wallets ? (
-          <div data-role='homepage body' className='w-full h-11/12 border rounded flex flex-col items-center'>
-            <Route path='/' exact>
-              <Transfer wallet={getWallet()} />
-              <div data-role='asset and tx tabs' className='w-full flex text-lg'>
-                <div 
-                  className={`w-1/2 py-2 text-center border-b-2 ${tabType === 'assets' ? 'border-pink-500' : 'border-white'}`}
-                  onClick={ () => setTabType('assets') }
-                >
-                  Assets</div>
-                <div 
-                  className={`w-1/2 py-2 text-center border-b-2 ${tabType === 'activities' ? 'border-pink-500' : 'border-white'}`}
-                  onClick={ () => setTabType('activities') }
-                >
-                  Activities
-                </div>
+    <Router basename={`/${baseHash}`}>
+      <div data-role='homepage container' className={baseHash === 'popup' ? 'w-120' : 'w-300 mx-auto'}>
+        <div data-role='header' className='w-full flex items-center justify-between'>
+          <Link to='/'>
+            <div className='flex items-center'>
+              <img src='/img/colorful_logo.svg' className='w-16 my-5' alt='colorful logo' />
+              <span className='text-xl text-cb-pink font-bold'>Colorful</span>
+            </div>
+          </Link>
+          {
+            account.wallets && (
+              <div>
+                <button onClick={ () => lockAccount() } className='px-4 py-2 bg-cb-pink text-white rounded mr-5'>Lock</button>
+                <button className='px-4 py-2 bg-cb-pink text-white rounded mr-10'><Link to='/secret'>SecretKey</Link></button>
               </div>
-              { tabType === 'assets' ?
-                <AssetRows wallet={getWallet()} /> :
-                <ActivityRows wallet={getWallet()} />
-              }
-            </Route>
-            <Route path='/send'>
-              <SendPage wallet={getWallet()} />
-            </Route>
-          </div>
-        ) : (
-          <div data-role='homepage body' className='w-full h-11/12 border rounded flex flex-col items-center'>
-            <img src='/img/colorful_logo.svg' className='w-32 my-5' alt='colorful logo' />
-            <p>Welcore Back!</p>
-            <label>Password</label>
-            <input type='password' className='w-1/3 px-3 py-2 border rounded' ref={passwordRef} />
-            <button className='px-8 py-2 bg-cb-pink text-white rounded mt-20' onClick={ () => authAccount() }>Unlock</button>
-          </div>
-        )
-      }
-    </div>
+            )
+          }
+        </div>
+        {
+          account.wallets ? (
+            <div data-role='homepage body' className='w-full h-11/12 border rounded flex flex-col items-center pb-20'>
+              <Route path='/' exact>
+                <Transfer wallet={getWallet()} />
+                <div data-role='asset and tx tabs' className='w-full flex text-lg'>
+                  <button 
+                    className={`w-1/2 py-2 text-center border-b-2 ${tabType === 'assets' ? 'border-pink-500' : 'border-black'}`}
+                    onClick={ () => setTabType('assets') }
+                  >
+                    Assets
+                  </button>
+                  <button 
+                    className={`w-1/2 py-2 text-center border-b-2 ${tabType === 'activities' ? 'border-pink-500' : 'border-black'}`}
+                    onClick={ () => setTabType('activities') }
+                  >
+                    Activities
+                  </button>
+                </div>
+                { tabType === 'assets' ?
+                  <AssetRows wallet={getWallet()} /> :
+                  <ActivityRows wallet={getWallet()} />
+                }
+              </Route>
+              <Route path='/send'>
+                <SendPage wallet={getWallet()} />
+              </Route>
+              <Route path='/secret'>
+                <SecretPage wallets={account.wallets} />
+              </Route>
+              <Route path='/asset-kda'>
+                <AssetPage wallet={getWallet()} />
+              </Route>
+            </div>
+          ) : (
+            <div data-role='homepage body' className='w-full h-11/12 border rounded flex flex-col items-center pb-20'>
+              <img src='/img/colorful_logo.svg' className='w-32 my-5' alt='colorful logo' />
+              <p className='text-xl font-semibold mb-10'>Welcore Back!</p>
+              <label className='mb-2'>Password</label>
+              <input type='password' className='w-1/3 px-3 py-2 border rounded' ref={passwordRef} />
+              <button className='px-8 py-2 bg-cb-pink text-white rounded mt-5' onClick={ () => authAccount() }>Unlock</button>
+            </div>
+          )
+        }
+      </div>
+    </Router>
   );
 };
 

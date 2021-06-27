@@ -54,6 +54,16 @@
   }
 }
 
+.w-300 { 
+  width: 75rem; 
+}
+.w-240 { 
+  width: 60rem; 
+}
+.w-180 { 
+  width: 45rem; 
+}
+
 form[data-role='register kda account'] input {
   @apply border rounded w-full py-1 px-3
 }
