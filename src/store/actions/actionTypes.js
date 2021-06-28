@@ -13,3 +13,5 @@ export const GET_ACCOUNT = 'GET_ACCOUNT';
 export const GET_LOCK_STATUS = 'GET_LOCK_STATUS';
 export const SIGN_CMD = 'SIGN_CMD';
 export const UNLOCK_SECRET = 'UNLOCK_SECRET';
+export const GET_EXTENSION_INFO = 'GET_EXTENSION_INFO';
+export const CANCEL_SIGNING = 'CANCEL_SIGNING';

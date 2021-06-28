@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import Pact from 'pact-lang-api';
 
-import { hideLoading, showLoading } from '../../store/actions/actionCreartor';
+import { createBaseMsg, hideLoading, showLoading } from '../../store/actions/actionCreartor';
 import { toast } from 'react-toastify';
 import { fetchListen, fetchLocal, fetchSend, getSendCmd } from '../../utils/chainweb';
 import { chainId } from '../../config';
@@ -51,38 +51,51 @@ export const SendPage = (props) => {
     };
     console.log('cmd', cmd);
     const unsignedCmd = getSendCmd(cmd);
-    const action = types.SIGN_CMD;
-    port.postMessage({ action, cmd: unsignedCmd.cmd, walletIndex: 0, context: 'send' });
+    const msg = createBaseMsg();
+    port.postMessage({ 
+      ...msg,
+      cmd: unsignedCmd.cmd, 
+      walletIndex: 0,
+      action: types.SIGN_CMD,
+      context: 'send'
+    });
   };
 
   useEffect(() => {
     // set up port
     const setupPort = () => {
-      port.onMessage.addListener(async (msg) => {
-        if (msg.context !== 'send') {
-          return;
-        }
-        if (msg.action === types.SIGN_CMD) {
-          console.log('get response in signCmd', msg);
-          const requestForSend = fetchSend(msg.data);
-          showLoading();
-          requestForSend.then(data => {
+      port.onMessage.addListener(handleMessage);
+    };
+
+    const handleMessage = async (msg) => {
+      if (msg.context !== 'send') {
+        return;
+      }
+      if (msg.action === types.SIGN_CMD) {
+        console.log('get response in signCmd', msg);
+        const requestForSend = fetchSend(msg.data);
+        showLoading();
+        requestForSend.then(data => {
+          console.log(data);
+          const requestKey = data.requestKeys[0];
+          const listenCmd = {
+            'listen': requestKey
+          };
+          const requestForListen = fetchListen(listenCmd);
+          requestForListen.then((data) => {
             console.log(data);
-            const requestKey = data.requestKeys[0];
-            const listenCmd = {
-              'listen': requestKey
-            };
-            const requestForListen = fetchListen(listenCmd);
-            requestForListen.then((data) => {
-              console.log(data);
-              hideLoading();
-            });
+            hideLoading();
           });
-        }
-      });
+        });
+      }
     };
 
     setupPort();
+
+    return () => {
+      // Unbind the event listener on clean up
+      port.onMessage.removeListener(handleMessage);
+    };
   }, []);
 
   return (

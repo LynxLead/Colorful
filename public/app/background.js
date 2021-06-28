@@ -12,6 +12,8 @@ import Pact, { wallet } from 'pact-lang-api';
       secretKey: null
     }]
   };
+  let unhandledMsg = null;
+  let bufferMsg = null;
 
   const createAccount = async (originAccount) => {
     // save password and encrypted keys
@@ -98,6 +100,7 @@ import Pact, { wallet } from 'pact-lang-api';
           publicKey: wallet.publicKey
         }))
       };
+      account.sigs = await Promise.all(account.wallets.map((wallet, index) => signCmd(wallet.publicKey, index).then(result => result.data)));
       return {
         status: 'success',
         data: account
@@ -113,19 +116,26 @@ import Pact, { wallet } from 'pact-lang-api';
   };
 
   const signCmd = async (cmd, walletIndex) => {
-    const keyPair = decryptedAccount.wallets[walletIndex];
-    const signed = Pact.crypto.sign(cmd, keyPair);
-    signed.cmd = cmd;
-    return {
-      status: 'success',
-      data: {
-        hash: signed.hash,
-        sigs: [{
-          sig: signed.sig
-        }],
-        cmd: signed.cmd
-      }
-    };
+    try {
+      const keyPair = decryptedAccount.wallets[walletIndex];
+      const signed = Pact.crypto.sign(cmd, keyPair);
+      signed.cmd = cmd;
+      return {
+        status: 'success',
+        data: {
+          hash: signed.hash,
+          sigs: [{
+            sig: signed.sig
+          }],
+          cmd: signed.cmd
+        }
+      };
+    } catch {
+      return {
+        status: 'failure',
+        data: 'sign error'
+      };
+    }
   };
 
   const unlockSecret = async (passwordHash, walletIndex) => {
@@ -144,43 +154,158 @@ import Pact, { wallet } from 'pact-lang-api';
     }
   };
 
+  const getExtensionInfo = async () => {
+    return {
+      status: 'success',
+      data: chrome.runtime
+    };
+  };
+
+  const cancelSigning = async () => {
+    return {
+      status: 'failure',
+      data: 'User canceled signing'
+    };
+  };
+
+  const openPopup = async () => {
+    
+    const width = 500;
+    const height = 1000;
+    const top = 0;
+    const left = 1500 - width;
+
+    await chrome.windows.create({
+      url: 'index.html#popup',
+      type: 'popup',
+      focused: true,
+      width,
+      height,
+      left,
+      top
+    });
+  };
+
+  const saveUnhandledMsg = (msg) => {
+    unhandledMsg = msg;
+    console.log('save unhandledMsg', unhandledMsg);
+  };
+  const clearUnhandledMsg = (msg) => {
+    unhandledMsg = null;
+    console.log('clear unhandledMsg', unhandledMsg);
+  };
+
+  const saveBufferMsg = (msg) => {
+    bufferMsg = msg;
+    console.log('save bufferMsg', bufferMsg);
+  };
+  const clearBufferMsg = (msg) => {
+    bufferMsg = null;
+    console.log('clear bufferMsg', bufferMsg);
+  };
+
+  // there'll be multiple ports, for original webpage and popup page and maybe others
   chrome.runtime.onConnect.addListener((port) => {
-    console.assert(port.name === 'auth');
+    console.log('in background port', port);
+    if (port.name !== 'colorful.auth') {
+      return;
+    }
     port.onMessage.addListener(async (msg) => {
-      let data;
-      switch (msg.action) {
-        case types.CREATE_ACCOUNT:
-          data = await createAccount(msg.account);
-          break;
-        case types.UNLOCK_ACCOUNT:
-          data = await unlockAccount(msg.passwordHash);
-          break;
-        case types.LOCK_ACCOUNT:
-          data = await lockAccount();
-          break;
-        case types.VERIFY_PASSWORD:
-          data = await verifyPassword(msg.passwordHash);
-          break;
-        case types.GET_ACCOUNT:
-          data = await getAccount();
-          break;
-        case types.GET_LOCK_STATUS:
-          data = await getLockStatus();
-          break;
-        case types.SIGN_CMD:
-          data = await signCmd(msg.cmd, msg.walletIndex);
-          break;
-        case types.UNLOCK_SECRET:
-          data = await unlockSecret(msg.passwordHash, msg.walletIndex);
-          break;
-        default:
+      console.log('in background msg', msg);
+      let data = {};
+      if (msg.source === 'colorful.popup' && msg.scene === 'repost' && unhandledMsg) {
+        data = unhandledMsg;
+        clearUnhandledMsg();
+      } else if (msg.source === 'colorful.popup' && msg.scene === 'buffer' && !bufferMsg) {
+        data = { 
+          ...msg,
+          status: 'success' 
+        };
+        return data;
+      } else if (msg.source === 'colorful.content' && msg.scene === 'buffer' && bufferMsg) {
+        data = bufferMsg;
+        clearBufferMsg();
+      } else if (msg.source === 'colorful.content') {
+        switch (msg.action) {
+          case types.CREATE_ACCOUNT:
+            data = await createAccount(msg.account);
+            break;
+          case types.UNLOCK_ACCOUNT:
+            data = await unlockAccount(msg.passwordHash);
+            break;
+          case types.LOCK_ACCOUNT:
+            data = await lockAccount();
+            break;
+          case types.VERIFY_PASSWORD:
+            data = await verifyPassword(msg.passwordHash);
+            break;
+          case types.GET_ACCOUNT:
+            data = await getAccount();
+            break;
+          case types.GET_LOCK_STATUS:
+            data = await getLockStatus();
+            break;
+          case types.SIGN_CMD:
+            saveUnhandledMsg(msg);
+            await openPopup();
+            return;
+          case types.UNLOCK_SECRET:
+            data = await unlockSecret(msg.passwordHash, msg.walletIndex);
+            break;
+          case types.GET_EXTENSION_INFO:
+            data = await getExtensionInfo();
+            break;
+          case types.CANCEL_SIGNING:
+            data = await cancelSigning();
+            break;
+          default:
+        }
+      } else if (msg.source === 'colorful.popup') {
+        switch (msg.action) {
+          case types.CREATE_ACCOUNT:
+            data = await createAccount(msg.account);
+            break;
+          case types.UNLOCK_ACCOUNT:
+            data = await unlockAccount(msg.passwordHash);
+            break;
+          case types.LOCK_ACCOUNT:
+            data = await lockAccount();
+            break;
+          case types.VERIFY_PASSWORD:
+            data = await verifyPassword(msg.passwordHash);
+            break;
+          case types.GET_ACCOUNT:
+            data = await getAccount();
+            break;
+          case types.GET_LOCK_STATUS:
+            data = await getLockStatus();
+            break;
+          case types.SIGN_CMD:
+            data = await signCmd(msg.cmd, msg.walletIndex);
+            break;
+          case types.UNLOCK_SECRET:
+            data = await unlockSecret(msg.passwordHash, msg.walletIndex);
+            break;
+          case types.GET_EXTENSION_INFO:
+            data = await getExtensionInfo();
+            break;
+          case types.CANCEL_SIGNING:
+            data = await cancelSigning();
+            break;
+          default:
+        }
       }
       const response = {
+        ...msg,
         ...data,
-        action: msg.action,
-        context: msg.context
+        source: 'colorful.background'
       };
-      port.postMessage(response);
+      console.log('in background response', response);
+      if (msg.buffer) {
+        saveBufferMsg(response)
+      } else {
+        port.postMessage(response);
+      }
     });
   });
 

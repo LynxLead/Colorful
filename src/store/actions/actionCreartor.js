@@ -27,3 +27,10 @@ export const setWallets = (wallets) => {
     wallets
   };
 };
+
+// messaging
+export const createBaseMsg = () => {
+  return {
+    source: 'colorful.popup'
+  };
+};

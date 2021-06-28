@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 
 import { encryptPassword } from '../../utils/security';
 import * as types from '../../store/actions/actionTypes';
+import { createBaseMsg } from '../../store/actions/actionCreartor';
 
 export const SecretPage = (props) => {
 
@@ -20,31 +21,44 @@ export const SecretPage = (props) => {
     const passwordHash = encryptPassword(password);
     const walletIndex = walletSelectRef.current.value;
     console.log('walletIndex', walletIndex);
-    const action = types.UNLOCK_SECRET;
-    port.postMessage({ action, passwordHash, walletIndex, context: 'secret' });
+    const msg = createBaseMsg();
+    port.postMessage({ 
+      ...msg,
+      passwordHash, 
+      walletIndex,
+      action: types.UNLOCK_SECRET,
+      context: 'secret'
+    });
   };
 
   useEffect(() => {
     // set up port
     const setupPort = () => {
-      port.onMessage.addListener(async (msg) => {
-        if (msg.context !== 'secret') {
-          return;
+      port.onMessage.addListener(handleMessage);
+    };
+
+    const handleMessage = async (msg) => {
+      if (msg.context !== 'secret') {
+        return;
+      }
+      if (msg.action === types.UNLOCK_SECRET) {
+        console.log('get response in unlockAccount', msg);
+        if (msg.status === 'success') {
+          toast.success('Unlock successfully!');
+          navigator.clipboard.writeText(msg.data);
+          setHasUnlocked(true);
+        } else {
+          toast.error(msg.data);
         }
-        if (msg.action === types.UNLOCK_SECRET) {
-          console.log('get response in unlockAccount', msg);
-          if (msg.status === 'success') {
-            toast.success('Unlock successfully!');
-            navigator.clipboard.writeText(msg.data);
-            setHasUnlocked(true);
-          } else {
-            toast.error(msg.data);
-          }
-        }
-      });
+      }
     };
 
     setupPort();
+
+    return () => {
+      // Unbind the event listener on clean up
+      port.onMessage.removeListener(handleMessage);
+    };
   }, []);
 
   return (

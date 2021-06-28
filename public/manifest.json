@@ -17,10 +17,24 @@
   "background": {
     "scripts": ["app/background.js"]
   },
+  "content_scripts": [
+      {
+        "matches": [
+          "http://localhost/*",
+          "*://colorblock.art/*",
+          "*://colorblockart.com/*"
+        ],
+      "js": ["app/content.js"],
+      "run_at": "document_end"  
+      }
+  ], 
   "permissions": [
     "storage", 
     "webRequest",
     "*://colorblock.art/"
   ],
+  "externally_connectable": {
+    "matches": ["*://colorblockart.com/*", "*://*.colorblockart.com/*"]
+  },
   "content_security_policy": "script-src 'self' 'sha256-1DvOO1WQ/lLdl5frGNAXFDE8tRsdoRjULf3ZimChs0g='; object-src 'self'"
 }

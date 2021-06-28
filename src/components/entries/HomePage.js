@@ -11,7 +11,7 @@ import ActivityRows from '../common/ActivityRows';
 import SendPage from '../pages/SendPage';
 import SecretPage from '../pages/SecretPage';
 import AssetPage from '../pages/AssetPage';
-import { hideLoading, showLoading } from '../../store/actions/actionCreartor';
+import { createBaseMsg, hideLoading, showLoading } from '../../store/actions/actionCreartor';
 import * as types from '../../store/actions/actionTypes';
 import { fetchLocal } from '../../utils/chainweb';
 
@@ -21,6 +21,8 @@ export const HomePage = (props) => {
 
   const [account, setAccount] = useState(undefined);
   const [tabType, setTabType] = useState('assets');
+  const [signingMsg, setSigningMsg] = useState(null);
+  const [signingCmd, setSigningCmd] = useState(null);
 
   const passwordRef = useRef();
   const history = useHistory();
@@ -34,8 +36,12 @@ export const HomePage = (props) => {
   };
 
   const updateAccount = () => {
-    const action = types.GET_ACCOUNT;
-    port.postMessage({ action, context: 'home' });
+    const msg = createBaseMsg();
+    port.postMessage({ 
+      ...msg,
+      action: types.GET_ACCOUNT,
+      context: 'home'
+    });
   };
 
   const updateBalance = async (account) => {
@@ -62,56 +68,112 @@ export const HomePage = (props) => {
   const authAccount = () => {
     const password = passwordRef.current.value;
     const passwordHash = encryptPassword(password);
-    const action = types.UNLOCK_ACCOUNT;
-    port.postMessage({ action, passwordHash, context: 'home' });
+    const msg = createBaseMsg();
+    port.postMessage({ 
+      ...msg,
+      passwordHash,
+      action: types.UNLOCK_ACCOUNT,
+      context: 'home'
+    });
   };
 
   const lockAccount = () => {
-    const action = types.LOCK_ACCOUNT;
-    port.postMessage({ action, context: 'home' });
+    const msg = createBaseMsg();
+    port.postMessage({ 
+      ...msg,
+      action: types.LOCK_ACCOUNT,
+      context: 'home'
+    });
+  };
+
+  const confirmSigning = () => {
+    const msg = createBaseMsg();
+    port.postMessage({
+      ...signingMsg,
+      ...msg,
+      buffer: true
+    });
+    checkResult();
+  };
+  const cancelSigning = () => {
+    const msg = createBaseMsg();
+    // broadcast in window
+    port.postMessage({ 
+      ...msg,
+      action: types.CANCEL_SIGNING,
+      buffer: true
+    });
+    checkResult();
+  };
+
+  const checkResult = async () => {
+    console.log('in check buff result');
+    const msg = createBaseMsg();
+    setInterval(() => port.postMessage({ 
+      ...msg,
+      secene: 'buffer'
+    }), 1000);
   };
 
   useEffect(() => {
     // set up port
     const setupPort = () => {
-      port.onMessage.addListener(async (msg) => {
-        if (msg.context !== 'home') {
-          return;
-        }
-        if (msg.action === types.GET_ACCOUNT) {
-          console.log('get response in getAccount', msg);
-          if (msg.status === 'success') {
-            const account = msg.data;
-            console.log('now update account: ', account)
-            showLoading();
-            await updateBalance(account);
-            hideLoading();
-            setAccount(account);
-          } else if (msg.data === 'Account is not initialized') {
-            history.push('/initialize');
-          } else {
-            setAccount({});
-          }
-        }
-        else if (msg.action === types.UNLOCK_ACCOUNT) {
-          console.log('get response in unlockAccount', msg);
-          if (msg.status === 'success') {
-            toast.success('welcome back!');
-            updateAccount();
-          } else {
-            toast.error(msg.data);
-          }
-        }
-        else if (msg.action === types.LOCK_ACCOUNT) {
-          console.log('get response in lockAccount', msg);
-          toast.success('Account is locked');
+      console.log('port onmessage', port.onMessage);
+      port.onMessage.addListener(handleMessage);
+    };
+    const handleMessage = async (msg) => {
+      if (msg.source !== 'colorful.background') {
+        return;
+      }
+      if (msg.secene === 'buffer' && msg.status === 'success') {
+        window.close();
+        return;
+      }
+      if (msg.action === types.GET_ACCOUNT) {
+        console.log('get response in getAccount', msg);
+        if (msg.status === 'success') {
+          const account = msg.data;
+          console.log('now update account: ', account)
+          showLoading();
+          await updateBalance(account);
+          hideLoading();
+          setAccount(account);
+        } else if (msg.data === 'Account is not initialized') {
+          history.push('/initialize');
+        } else {
           setAccount({});
         }
-      });
+      }
+      else if (msg.action === types.UNLOCK_ACCOUNT) {
+        console.log('get response in unlockAccount', msg);
+        if (msg.status === 'success') {
+          toast.success('welcome back!');
+          updateAccount();
+        } else {
+          toast.error(msg.data);
+        }
+      }
+      else if (msg.action === types.LOCK_ACCOUNT) {
+        console.log('get response in lockAccount', msg);
+        toast.success('Account is locked');
+        setAccount({});
+      }
+      else if (msg.action === types.SIGN_CMD) {
+        console.log('get response in signCmd', msg);
+        setSigningMsg(msg);
+        const cmd = JSON.parse(msg.cmd);
+        console.log('get response in signCmd. cmd = ', cmd);
+        setSigningCmd(cmd);
+      }
     };
 
     setupPort();
     updateAccount();   // load account
+
+    return () => {
+      // Unbind the event listener on clean up
+      port.onMessage.removeListener(handleMessage);
+    };
   }, []);
 
   return account === undefined ? <></> : (
@@ -135,38 +197,64 @@ export const HomePage = (props) => {
         </div>
         {
           account.wallets ? (
-            <div data-role='homepage body' className='w-full h-11/12 border rounded flex flex-col items-center pb-20'>
-              <Route path='/' exact>
-                <Transfer wallet={getWallet()} />
-                <div data-role='asset and tx tabs' className='w-full flex text-lg'>
-                  <button 
-                    className={`w-1/2 py-2 text-center border-b-2 ${tabType === 'assets' ? 'border-pink-500' : 'border-black'}`}
-                    onClick={ () => setTabType('assets') }
-                  >
-                    Assets
-                  </button>
-                  <button 
-                    className={`w-1/2 py-2 text-center border-b-2 ${tabType === 'activities' ? 'border-pink-500' : 'border-black'}`}
-                    onClick={ () => setTabType('activities') }
-                  >
-                    Activities
-                  </button>
+            signingCmd ? (
+              <div data-role='signing page' className='w-full px-6 h-11/12 border rounded flex flex-col items-center pb-20 text-center'>
+                <img src={signingCmd.payload.exec.data.urls[1]} className='w-1/2' alt='preview' />
+                <p className='text-lg font-semibold mt-4'>Code</p>
+                <p>{signingCmd.payload.exec.code}</p>
+
+                <p className='text-lg font-semibold mt-4'>Caps</p>
+                {signingCmd.signers[0].clist.map(cap => (
+                  <div>
+                    <p>Name: {cap.name}</p>
+                    <p>Arguments: {JSON.stringify(cap.args)}</p>
+                  </div>
+                ))}
+
+                <p className='text-lg font-semibold mt-4'>Meta</p>
+                {Object.entries(signingCmd.meta).map(([key, value]) => (
+                    <p>{key}: {value}</p>
+                ))}
+
+                <div className='w-full flex justify-between px-6 mt-10'>
+                  <button className='px-8 py-2 bg-cb-pink text-white rounded mt-5' onClick={ () => cancelSigning() }>Cancel</button>
+                  <button className='px-8 py-2 bg-cb-pink text-white rounded mt-5' onClick={ () => confirmSigning() }>Confirm</button>
                 </div>
-                { tabType === 'assets' ?
-                  <AssetRows wallet={getWallet()} /> :
-                  <ActivityRows wallet={getWallet()} />
-                }
-              </Route>
-              <Route path='/send'>
-                <SendPage wallet={getWallet()} />
-              </Route>
-              <Route path='/secret'>
-                <SecretPage wallets={account.wallets} />
-              </Route>
-              <Route path='/asset-kda'>
-                <AssetPage wallet={getWallet()} />
-              </Route>
-            </div>
+              </div>
+            ) : (
+              <div data-role='homepage body' className='w-full h-11/12 border rounded flex flex-col items-center pb-20'>
+                <Route path='/' exact>
+                  <Transfer wallet={getWallet()} />
+                  <div data-role='asset and tx tabs' className='w-full flex text-lg'>
+                    <button 
+                      className={`w-1/2 py-2 text-center border-b-2 ${tabType === 'assets' ? 'border-pink-500' : 'border-black'}`}
+                      onClick={ () => setTabType('assets') }
+                    >
+                      Assets
+                    </button>
+                    <button 
+                      className={`w-1/2 py-2 text-center border-b-2 ${tabType === 'activities' ? 'border-pink-500' : 'border-black'}`}
+                      onClick={ () => setTabType('activities') }
+                    >
+                      Activities
+                    </button>
+                  </div>
+                  { tabType === 'assets' ?
+                    <AssetRows wallet={getWallet()} /> :
+                    <ActivityRows wallet={getWallet()} />
+                  }
+                </Route>
+                <Route path='/send'>
+                  <SendPage wallet={getWallet()} />
+                </Route>
+                <Route path='/secret'>
+                  <SecretPage wallets={account.wallets} />
+                </Route>
+                <Route path='/asset-kda'>
+                  <AssetPage wallet={getWallet()} />
+                </Route>
+              </div>
+            )
           ) : (
             <div data-role='homepage body' className='w-full h-11/12 border rounded flex flex-col items-center pb-20'>
               <img src='/img/colorful_logo.svg' className='w-32 my-5' alt='colorful logo' />

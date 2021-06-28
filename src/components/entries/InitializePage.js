@@ -7,7 +7,7 @@ import { toast } from 'react-toastify';
 import Pact from 'pact-lang-api';
 
 import { createWalletConfig, serverUrl } from '../../config';
-import { showLoading, hideLoading } from '../../store/actions/actionCreartor';
+import { showLoading, hideLoading, createBaseMsg } from '../../store/actions/actionCreartor';
 import { encryptPassword } from '../../utils/security';
 import * as types from '../../store/actions/actionTypes';
 import { fetchLocal } from '../../utils/chainweb';
@@ -98,7 +98,13 @@ export const InitializePage = (props) => {
         }]
       };
 
-      port.postMessage({ action: types.CREATE_ACCOUNT, account, context: 'initialize' });
+      const msg = createBaseMsg();
+      port.postMessage({ 
+        ...msg,
+        account,
+        action: types.CREATE_ACCOUNT,
+        context: 'initialize'
+      });
     }
   };
 
@@ -155,19 +161,26 @@ export const InitializePage = (props) => {
   useEffect(() => {
     // set up port
     const setupPort = () => {
-      port.onMessage.addListener(async (msg) => {
-        if (msg.context !== 'initialize') {
-          return;
-        }
-        if (msg.action === types.CREATE_ACCOUNT) {
-          console.log('get response in createAccount', msg);
-          clearRefValues();
-          history.push('/finish');
-        }
-      });
+      port.onMessage.addListener(handleMessage);
+    };
+
+    const handleMessage = async (msg) => {
+      if (msg.context !== 'initialize') {
+        return;
+      }
+      if (msg.action === types.CREATE_ACCOUNT) {
+        console.log('get response in createAccount', msg);
+        clearRefValues();
+        history.push('/finish');
+      }
     };
 
     setupPort();
+    
+    return () => {
+      // Unbind the event listener on clean up
+      port.onMessage.removeListener(handleMessage);
+    };
   }, []);
 
   return (

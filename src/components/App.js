@@ -8,7 +8,7 @@ import ReactLoading from 'react-loading';
 
 import InitializePage from './entries/InitializePage';
 import HomePage from './entries/HomePage';
-import { savePort } from '../store/actions/actionCreartor';
+import { createBaseMsg, savePort } from '../store/actions/actionCreartor';
 
 /* global chrome */
 export const App = (props) => {
@@ -17,8 +17,13 @@ export const App = (props) => {
 
   if (!port) {
     console.log('create new port');
-    const newPort = chrome.runtime.connect({name: 'auth'});
+    const newPort = chrome.runtime.connect({name: 'colorful.auth'});
     savePort(newPort);
+    const msg = createBaseMsg();
+    newPort.postMessage({ 
+      ...msg,
+      scene: 'repost'
+    });
   }
 
   return (
