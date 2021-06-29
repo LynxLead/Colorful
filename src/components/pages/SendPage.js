@@ -69,22 +69,50 @@ export const SendPage = (props) => {
       sender
     };
     const unsignedCmd = getSendCmd(cmd);
-
-    const requestForSend = fetchSend(unsignedCmd);
-    showLoading('Please wait 30~90 seconds');
-    requestForSend.then(data => {
-      const requestKey = data.requestKeys[0];
-      const listenCmd = {
-        'listen': requestKey
-      };
-      const requestForListen = fetchListen(listenCmd);
-      requestForListen.then((data) => {
-        hideLoading();
-        setConfirmStatus('');
-      });
+    const msg = createBaseMsg();
+    port.postMessage({ 
+      ...msg,
+      cmd: unsignedCmd.cmd, 
+      walletIndex: 0,
+      action: types.SIGN_CMD,
+      context: 'send'
     });
-  
+    setConfirmStatus('');
   };
+
+  useEffect(() => {
+    // set up port
+    const setupPort = () => {
+      port.onMessage.addListener(handleMessage);
+    };
+
+    const handleMessage = async (msg) => {
+      if (msg.context !== 'send') {
+        return;
+      }
+      if (msg.action === types.SIGN_CMD) {
+        const requestForSend = fetchSend(msg.data);
+        showLoading('Please wait 30~90 seconds');
+        requestForSend.then(data => {
+          const requestKey = data.requestKeys[0];
+          const listenCmd = {
+            'listen': requestKey
+          };
+          const requestForListen = fetchListen(listenCmd);
+          requestForListen.then((data) => {
+            hideLoading();
+          });
+        });
+      }
+    };
+
+    setupPort();
+
+    return () => {
+      // Unbind the event listener on clean up
+      port.onMessage.removeListener(handleMessage);
+    };
+  }, []);
 
   return (
     <div className='w-120 mx-auto flex flex-col items-center'>

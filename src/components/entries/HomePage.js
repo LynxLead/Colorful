@@ -172,7 +172,7 @@ export const HomePage = (props) => {
         toast.success('Account is locked');
         setAccount({});
       }
-      else if (msg.action === types.SIGN_CMD) {
+      else if (msg.action === types.SIGN_CMD && msg.context !== 'send') {
         console.log('get response in signCmd', msg);
         setSigningMsg(msg);
         const cmd = JSON.parse(msg.cmd);
