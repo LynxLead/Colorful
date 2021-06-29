@@ -111,8 +111,8 @@ export const HomePage = (props) => {
     const msg = createBaseMsg();
     setInterval(() => port.postMessage({ 
       ...msg,
-      secene: 'buffer'
-    }), 1000);
+      scene: 'buffer'
+    }), 5000);
   };
 
   useEffect(() => {
@@ -125,7 +125,7 @@ export const HomePage = (props) => {
       if (msg.source !== 'colorful.background') {
         return;
       }
-      if (msg.secene === 'buffer' && msg.status === 'success') {
+      if (msg.scene === 'buffer' && msg.status === 'success') {
         window.close();
         return;
       }

@@ -199,7 +199,7 @@ import Pact, { wallet } from 'pact-lang-api';
     bufferMsg = msg;
     console.log('save bufferMsg', bufferMsg);
   };
-  const clearBufferMsg = (msg) => {
+  const clearBufferMsg = () => {
     bufferMsg = null;
     console.log('clear bufferMsg', bufferMsg);
   };
@@ -211,7 +211,7 @@ import Pact, { wallet } from 'pact-lang-api';
       return;
     }
     port.onMessage.addListener(async (msg) => {
-      console.log('in background msg', msg);
+      console.log('in background msg', msg, 'bufferMsg', bufferMsg);
       let data = {};
       if (msg.source === 'colorful.popup' && msg.scene === 'repost' && unhandledMsg) {
         data = unhandledMsg;
@@ -221,7 +221,6 @@ import Pact, { wallet } from 'pact-lang-api';
           ...msg,
           status: 'success' 
         };
-        return data;
       } else if (msg.source === 'colorful.content' && msg.scene === 'buffer' && bufferMsg) {
         data = bufferMsg;
         clearBufferMsg();
