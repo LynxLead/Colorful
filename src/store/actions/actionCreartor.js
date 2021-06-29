@@ -1,9 +1,10 @@
 import * as types from './actionTypes';
 
 // root
-export const showLoading = () => {
+export const showLoading = (text=null) => {
   return {
-    type: types.SHOW_LOADING
+    type: types.SHOW_LOADING,
+    text
   };
 };
 

@@ -4,16 +4,18 @@ import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import * as fa from '@fortawesome/free-solid-svg-icons';
 import ReactLoading from 'react-loading';
 
 import InitializePage from './entries/InitializePage';
 import HomePage from './entries/HomePage';
-import { createBaseMsg, savePort } from '../store/actions/actionCreartor';
+import { createBaseMsg, hideLoading, savePort } from '../store/actions/actionCreartor';
 
 /* global chrome */
 export const App = (props) => {
 
-  const { loading, port, savePort } = props;
+  const { loading, loadingText, port, savePort, hide } = props;
 
   if (!port) {
     console.log('create new port');
@@ -32,11 +34,14 @@ export const App = (props) => {
         <ToastContainer position='top-center' />
         { loading && 
           <div 
-            className='absolute top-40 w-full'
+            className='absolute top-36 w-full'
           >
-            <div className='w-80 mx-auto h-80 border rounded-lg flex flex-col items-center justify-center bg-white z-50'>
-              <ReactLoading type='cubes' color='rgb(254, 94, 174)' height='100px' width='100px' />
-              <p className='mt-10'>Please wait 30~60 seconds</p>
+            <div className='w-80 h-80 mx-auto mt-32 flex flex-col items-center justify-center relative border mb-20 p-10'>
+              <ReactLoading type='cubes' color='rgb(254, 94, 174)' height='60px' width='60px' className='mt-10' />
+              <span className='text-lg mt-5'>{ loadingText || '' }</span>
+              <div className='absolute top-4 right-4 text-gray-300 flex items-center cursor-pointer' onClick={ () => hideLoading() }>
+                <FontAwesomeIcon icon={fa.faTimes} size='lg' />
+              </div>
             </div>
           </div>
         }
@@ -64,11 +69,13 @@ App.propTypes = {
 
 const mapStateToProps = state => ({
   loading: state.root.loading,
+  loadingText: state.root.loadingText,
   port: state.root.port
 });
 
 const mapDispatchToProps = dispatch => ({
-  savePort: (port) => dispatch(savePort(port))
+  savePort: (port) => dispatch(savePort(port)),
+  hideLoading: () => dispatch(hideLoading())
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(App);

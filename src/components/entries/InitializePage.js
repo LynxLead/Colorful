@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { connect } from 'react-redux';
 import { useLocation, useHistory } from 'react-router';
@@ -15,6 +15,8 @@ import { mkReq } from '../../utils/tools';
 
 export const InitializePage = (props) => {
 
+  const [keyPairs, setKeyPairs] = useState({});
+
   const addressRef = useRef();
   const publicKeyRef = useRef();
   const secretKeyRef = useRef();
@@ -22,10 +24,8 @@ export const InitializePage = (props) => {
   const repeatedPasswordRef = useRef();
 
   const history = useHistory();
-  console.log('location in initial', useLocation());
 
   const { showLoading, hideLoading, port } = props;
-  const keyPairs = Pact.crypto.genKeyPair();
 
   const header = (
     <div className='flex items-center'>
@@ -65,13 +65,14 @@ export const InitializePage = (props) => {
       return;
     }
 
-
     let result;
     if (fromImport) {
-      result = 1;
+      result = {
+        status: 'success'
+      };
     } else {
       // create
-      showLoading();
+      showLoading('Creating wallet on Kadena network. Please wait 30 ~ 90 seconds...');
       const url = `${serverUrl}/colorful/create-wallet`;
       const postData = {
         address,
@@ -87,24 +88,28 @@ export const InitializePage = (props) => {
     }
 
     if (result) {
-      // encrypt keys with password
-      const passwordHash = encryptPassword(password);
-      const account = {
-        passwordHash,
-        wallets: [{
-          address,
-          publicKey,
-          secretKey
-        }]
-      };
+      if (result.status === 'success') {
+        // encrypt keys with password
+        const passwordHash = encryptPassword(password);
+        const account = {
+          passwordHash,
+          wallets: [{
+            address,
+            publicKey,
+            secretKey
+          }]
+        };
 
-      const msg = createBaseMsg();
-      port.postMessage({ 
-        ...msg,
-        account,
-        action: types.CREATE_ACCOUNT,
-        context: 'initialize'
-      });
+        const msg = createBaseMsg();
+        port.postMessage({ 
+          ...msg,
+          account,
+          action: types.CREATE_ACCOUNT,
+          context: 'initialize'
+        });
+      } else {
+        toast.error(result.data);
+      }
     }
   };
 
@@ -175,6 +180,7 @@ export const InitializePage = (props) => {
       }
     };
 
+    setKeyPairs(Pact.crypto.genKeyPair());
     setupPort();
     
     return () => {
@@ -184,7 +190,7 @@ export const InitializePage = (props) => {
   }, []);
 
   return (
-    <div className='w-full'>
+    <div className='w-1/2 mx-auto'>
       <Router basename='/initialize'>
         <Switch>
           <Route path='/welcome'>
@@ -196,7 +202,7 @@ export const InitializePage = (props) => {
                 <p>Glad to see you.</p>
               </div>
               <Link to='/select-action'>
-                <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10'>
+                <button type='button' className='px-8 py-2 bg-cb-pink text-white rounded mt-10'>
                   Start Using
                 </button>
               </Link>
@@ -244,7 +250,7 @@ export const InitializePage = (props) => {
                 <input type='password' ref={passwordRef} />
                 <label className='mt-5 mb-2'>Confirm your password</label>
                 <input type='password' ref={repeatedPasswordRef} />
-                <button className='px-8 py-2 bg-cb-pink text-white rounded mt-20' onClick={ () => createWallet() }>Generate</button>
+                <button type='button' className='px-8 py-2 bg-cb-pink text-white rounded mt-20' onClick={ () => createWallet() }>Generate</button>
               </form>
             </div>
           </Route>
@@ -263,7 +269,7 @@ export const InitializePage = (props) => {
                 <input type='password' ref={passwordRef} />
                 <label className='mt-5 mb-2'>Confirm your password</label>
                 <input type='password' ref={repeatedPasswordRef} />
-                <button className='px-8 py-2 bg-cb-pink text-white rounded mt-20' onClick={ () => importWallet() }>Import</button>
+                <button type='button' className='px-8 py-2 bg-cb-pink text-white rounded mt-20' onClick={ () => importWallet() }>Import</button>
               </form>
             </div>
           </Route>
@@ -293,11 +299,12 @@ InitializePage.propTypes = {
 
 const mapStateToProps = state => ({
   loading: state.root.loading,
+  loadingText: state.root.loadingText,
   port: state.root.port
 });
 
 const mapDispatchToProps = dispatch => ({
-  showLoading: () => dispatch(showLoading()),
+  showLoading: (text=null) => dispatch(showLoading(text)),
   hideLoading: () => dispatch(hideLoading())
 });
 

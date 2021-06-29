@@ -24,3 +24,10 @@ export const mkReq = (cmd=null, cors=true) => {
 export const getTimestamp = () => {
   return Math.floor(new Date().getTime() / 1000);
 };
+
+export const firstUrl = (urls) => {
+  return JSON.parse(urls)[0];
+};
+export const secondUrl = (urls) => {
+  return JSON.parse(urls)[1];
+};

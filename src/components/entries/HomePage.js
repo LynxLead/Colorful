@@ -14,6 +14,7 @@ import AssetPage from '../pages/AssetPage';
 import { createBaseMsg, hideLoading, showLoading } from '../../store/actions/actionCreartor';
 import * as types from '../../store/actions/actionTypes';
 import { fetchLocal } from '../../utils/chainweb';
+import { firstUrl, secondUrl } from '../../utils/tools';
 
 /* global chrome */
 
@@ -112,7 +113,20 @@ export const HomePage = (props) => {
     setInterval(() => port.postMessage({ 
       ...msg,
       scene: 'buffer'
-    }), 5000);
+    }), 1000);
+  };
+
+  const clickLogout = () => {
+    if (window.confirm('Confirm logging out?')) {
+      chrome.tabs.create({ url: '/index.html#/initialize' });
+      window.close();
+      const msg = createBaseMsg();
+      port.postMessage({ 
+        ...msg,
+        action: types.DELETE_ACCOUNT,
+        context: 'home'
+      });
+    }
   };
 
   useEffect(() => {
@@ -187,19 +201,30 @@ export const HomePage = (props) => {
             </div>
           </Link>
           {
-            account.wallets && (
+            account.wallets ? (
               <div>
-                <button onClick={ () => lockAccount() } className='px-4 py-2 bg-cb-pink text-white rounded mr-5'>Lock</button>
-                <button className='px-4 py-2 bg-cb-pink text-white rounded mr-10'><Link to='/secret'>SecretKey</Link></button>
+                <button onClick={ () => lockAccount() } className='px-2 py-2 bg-cb-pink text-white rounded mr-4'>Lock</button>
+                <button className='px-2 py-2 bg-cb-pink text-white rounded mr-4'><Link to='/secret'>SecretKey</Link></button>
+                <button className='px-2 py-2 bg-cb-pink text-white rounded mr-4'><a onClick={ () => clickLogout() }>Logout</a></button>
               </div>
-            )
+            ) :
+            <button className='px-2 py-2 bg-cb-pink text-white rounded mr-4'><a onClick={ () => clickLogout() }>Reset</a></button>
           }
         </div>
         {
           account.wallets ? (
             signingCmd ? (
               <div data-role='signing page' className='w-full px-6 h-11/12 border rounded flex flex-col items-center pb-20 text-center'>
-                <img src={signingCmd.payload.exec.data.urls[1]} className='w-1/2' alt='preview' />
+                { signingMsg.itemUrls && <img 
+                  src={firstUrl(signingMsg.itemUrls)} 
+                  className='w-1/2' 
+                  onError={ (e) => {
+                    e.target.onerror = null; 
+                    e.target.src = secondUrl(signingMsg.itemUrls);
+                  } } 
+                  alt='preview'
+                />
+                }
                 <p className='text-lg font-semibold mt-4'>Code</p>
                 <p>{signingCmd.payload.exec.code}</p>
 
@@ -279,7 +304,7 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-  showLoading: () => dispatch(showLoading()),
+  showLoading: (text=null) => dispatch(showLoading(text)),
   hideLoading: () => dispatch(hideLoading())
 });
 

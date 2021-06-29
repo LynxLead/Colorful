@@ -91,7 +91,7 @@ import Pact, { wallet } from 'pact-lang-api';
     } else if (decryptedAccount.passwordHash === null) {
       return {
         status: 'failure',
-        data: 'Account is locked'
+        data: 'Account is locked, Please open extension popup and login'
       };
     } else {
       const account = {
@@ -168,6 +168,22 @@ import Pact, { wallet } from 'pact-lang-api';
     };
   };
 
+  const deleteAccount = async () => {
+    decryptedAccount =  {
+      passwordHash: null,
+      wallets: [{
+        address: null,
+        publicKey: null,
+        secretKey: null
+      }]
+    };
+    await chrome.storage.local.set({ account: {} });
+    return {
+      status: 'success',
+      data: 'Account is deleted'
+    };
+  };
+
   const openPopup = async () => {
     
     const width = 500;
@@ -188,30 +204,24 @@ import Pact, { wallet } from 'pact-lang-api';
 
   const saveUnhandledMsg = (msg) => {
     unhandledMsg = msg;
-    console.log('save unhandledMsg', unhandledMsg);
   };
   const clearUnhandledMsg = (msg) => {
     unhandledMsg = null;
-    console.log('clear unhandledMsg', unhandledMsg);
   };
 
   const saveBufferMsg = (msg) => {
     bufferMsg = msg;
-    console.log('save bufferMsg', bufferMsg);
   };
   const clearBufferMsg = () => {
     bufferMsg = null;
-    console.log('clear bufferMsg', bufferMsg);
   };
 
   // there'll be multiple ports, for original webpage and popup page and maybe others
   chrome.runtime.onConnect.addListener((port) => {
-    console.log('in background port', port);
     if (port.name !== 'colorful.auth') {
       return;
     }
     port.onMessage.addListener(async (msg) => {
-      console.log('in background msg', msg, 'bufferMsg', bufferMsg);
       let data = {};
       if (msg.source === 'colorful.popup' && msg.scene === 'repost' && unhandledMsg) {
         data = unhandledMsg;
@@ -257,6 +267,9 @@ import Pact, { wallet } from 'pact-lang-api';
           case types.CANCEL_SIGNING:
             data = await cancelSigning();
             break;
+          case types.DELETE_ACCOUNT:
+            data = await deleteAccount();
+            break;
           default:
         }
       } else if (msg.source === 'colorful.popup') {
@@ -291,6 +304,9 @@ import Pact, { wallet } from 'pact-lang-api';
           case types.CANCEL_SIGNING:
             data = await cancelSigning();
             break;
+          case types.DELETE_ACCOUNT:
+            data = await deleteAccount();
+            break;
           default:
         }
       }
@@ -299,7 +315,6 @@ import Pact, { wallet } from 'pact-lang-api';
         ...data,
         source: 'colorful.background'
       };
-      console.log('in background response', response);
       if (msg.buffer) {
         saveBufferMsg(response)
       } else {

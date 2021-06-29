@@ -15,24 +15,42 @@ export const SendPage = (props) => {
   const [txData, setTxData] = useState({
     sender: wallet.address
   });
+  const [confirmStatus, setConfirmStatus] = useState('');
 
-  const clickTransfer = async () => {
-    console.log(txData);
-    const { sender, receiver, amount } = txData;
+  const cancelTransfer = () => {
+    setConfirmStatus('');
+  };
+
+  const confirmTransfer = () => {
+    clickTransfer(true);
+  };
+
+  const clickTransfer = async (confirmed=false) => {
+    const { sender, receiver, receiverKey, amount } = txData;
     
     // validate receiver
-    const code = `(coin.get-balance "${receiver}")`;
-    const requestForLocal = fetchLocal(code);
-    const result = await requestForLocal.then(data => {
-      const result = data.result;
-      if (result.status !== 'success') {
-        toast.warning('Receiver is not existing');
-      } else {
-        return result.data;
+    if (!confirmed) {
+      const code = `(coin.get-balance "${receiver}")`;
+      const requestForLocal = fetchLocal(code);
+      const result = await requestForLocal.then(data => {
+        const result = data.result;
+        if (result.status !== 'success') {
+          toast.warning('Receiver is not existing');
+          setConfirmStatus('confirming');
+        } else {
+          return result.data;
+        }
+      });
+      if (!result) {
+        return;
       }
-    });
-    if (!result) {
-      return;
+    } 
+
+    let pactCode;
+    if (confirmed) {
+      pactCode = `(coin.transfer-create "${sender}" "${receiver}" (read-decimal "amount") (read-keyset "ks"))`
+    } else {
+      pactCode = `(coin.transfer "${sender}" "${receiver}" (read-decimal "amount"))`
     }
 
     const cmd = {
@@ -43,13 +61,13 @@ export const SendPage = (props) => {
           Pact.lang.mkCap('transfer', 'transfer coin', 'coin.TRANSFER', [sender, receiver, amount])['cap']
         ]
       },
-      pactCode: `(coin.transfer "${sender}" "${receiver}" (read-decimal "amount"))`,
+      pactCode,
       envData: {
-        amount
+        amount,
+        ks: [receiverKey]
       },
       sender
     };
-    console.log('cmd', cmd);
     const unsignedCmd = getSendCmd(cmd);
     const msg = createBaseMsg();
     port.postMessage({ 
@@ -59,6 +77,7 @@ export const SendPage = (props) => {
       action: types.SIGN_CMD,
       context: 'send'
     });
+    setConfirmStatus('');
   };
 
   useEffect(() => {
@@ -72,18 +91,15 @@ export const SendPage = (props) => {
         return;
       }
       if (msg.action === types.SIGN_CMD) {
-        console.log('get response in signCmd', msg);
         const requestForSend = fetchSend(msg.data);
-        showLoading();
+        showLoading('Please wait 30~90 seconds');
         requestForSend.then(data => {
-          console.log(data);
           const requestKey = data.requestKeys[0];
           const listenCmd = {
             'listen': requestKey
           };
           const requestForListen = fetchListen(listenCmd);
           requestForListen.then((data) => {
-            console.log(data);
             hideLoading();
           });
         });
@@ -108,13 +124,30 @@ export const SendPage = (props) => {
       <div className='w-full flex items-center justify-center h-12'>
         <input type='text' className='w-3/4 h-full border px-3' onChange={ (e) => setTxData({...txData, receiver: e.target.value}) } />
       </div>
+      { confirmStatus !== '' && <label className='text-lg font-bold mt-10 mb-2'>Receiver Key <span className='text-xs text-green-500 ml-5'>On Chain {chainId}</span></label> }
+      { confirmStatus !== '' &&
+      <div className='w-full flex items-center justify-center h-12'>
+        <input type='text' className='w-3/4 h-full border px-3' onChange={ (e) => setTxData({...txData, receiverKey: e.target.value}) } />
+      </div>
+      }
       <label className='text-lg font-bold mt-10 mb-2'>Amount</label>
       <div className='w-full flex items-center justify-center h-12'>
         <input type='number' className='w-3/4 h-full border px-3' onChange={ (e) => setTxData({...txData, amount: parseFloat(e.target.value)}) } />
       </div>
-      <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10' onClick={ () => clickTransfer() }>
-        Make Transfer
-      </button>
+      {
+        confirmStatus === '' ? 
+        <button className='px-8 py-2 bg-cb-pink text-white rounded mt-10' onClick={ () => clickTransfer() }>
+          Make Transfer
+        </button> :
+        <div className='flex justify-between'>
+          <button className='w-5/12 px-8 py-2 bg-gray-700 text-white rounded mt-10' onClick={ () => cancelTransfer() }>
+            Cancel
+          </button>
+          <button className='w-5/12 px-8 py-2 bg-cb-pink text-white rounded mt-10' onClick={ () => confirmTransfer() }>
+            Confirm Transfer
+          </button>
+        </div>
+      }
     </div>
   );
 };
@@ -128,7 +161,7 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = dispatch => ({
-  showLoading: () => dispatch(showLoading()),
+  showLoading: (text=null) => dispatch(showLoading(text)),
   hideLoading: () => dispatch(hideLoading())
 });
 

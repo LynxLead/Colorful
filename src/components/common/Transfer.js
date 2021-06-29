@@ -29,7 +29,7 @@ export const Transfer = (props) => {
     <div className='w-full flex flex-col items-center relative'>
       { showReceiverModal &&
         <div className='absolute top-20 w-full'>
-          <div className='w-1/2 mx-auto relative bg-white z-50 border rounded'>
+          <div className='w-3/5 p-6 mx-auto relative bg-white z-50 border rounded'>
             <FontAwesomeIcon icon={fa.faTimes} size='xl' className='text-cb-pink absolute top-5 right-5 cursor-pointer' onClick={ () => setShowReceiverModal(false) } />
             <div className='flex flex-col items-center space-y-3 text-lg pt-30'>
               <p>Copy to clipboard</p>
