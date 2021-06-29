@@ -31,8 +31,10 @@
     "web-vitals": "^2.0.1"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
+    "local": "craco start",
+    "start": "SET \"REACT_APP_STAGE=dev\" && craco start",
+    "build-dev": "SET \"REACT_APP_STAGE=dev\" && craco build",
+    "build": "SET \"REACT_APP_STAGE=prod\" && craco build",
     "test": "jest",
     "eject": "react-scripts eject"
   },

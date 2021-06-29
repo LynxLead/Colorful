@@ -1,11 +1,23 @@
+export const devMode = process.env.REACT_APP_STAGE !== 'prod';
+const getServerUrl = () => {
+  // read env params
+  switch (process.env.REACT_APP_STAGE) {
+    case 'dev':
+      return 'http://api.colorblockart.com';
+    case 'prod':
+      return 'https://api.colorblock.art';
+    default:
+      return 'http://localhost:5000';
+  }
+};
+export const serverUrl = getServerUrl();
+
 export const createWalletConfig = {
   minAddressLength: 3,
   maxAddressLength: 256,
   minPasswordLength: 3,
   maxPasswordLength: 36
 };
-
-export const serverUrl = 'http://localhost:5000';
 
 export const cookiesKey = 'colorful';
 

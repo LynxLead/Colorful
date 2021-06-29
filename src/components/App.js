@@ -15,7 +15,7 @@ import { createBaseMsg, hideLoading, savePort } from '../store/actions/actionCre
 /* global chrome */
 export const App = (props) => {
 
-  const { loading, loadingText, port, savePort, hide } = props;
+  const { loading, loadingText, port, savePort, hideLoading } = props;
 
   if (!port) {
     console.log('create new port');
@@ -34,9 +34,9 @@ export const App = (props) => {
         <ToastContainer position='top-center' />
         { loading && 
           <div 
-            className='absolute top-36 w-full'
+            className='absolute top-24 w-full'
           >
-            <div className='w-80 h-80 mx-auto mt-32 flex flex-col items-center justify-center relative border mb-20 p-10'>
+            <div className='w-80 h-80 mx-auto mt-32 flex flex-col items-center justify-center relative border mb-20 p-10 bg-white'>
               <ReactLoading type='cubes' color='rgb(254, 94, 174)' height='60px' width='60px' className='mt-10' />
               <span className='text-lg mt-5'>{ loadingText || '' }</span>
               <div className='absolute top-4 right-4 text-gray-300 flex items-center cursor-pointer' onClick={ () => hideLoading() }>
