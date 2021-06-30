@@ -283,7 +283,7 @@ export const HomePage = (props) => {
           ) : (
             <div data-role='homepage body' className='w-full h-11/12 border rounded flex flex-col items-center pb-20'>
               <img src='/img/colorful_logo.svg' className='w-32 my-5' alt='colorful logo' />
-              <p className='text-xl font-semibold mb-10'>Welcore Back!</p>
+              <p className='text-xl font-semibold mb-10'>Welcome Back!</p>
               <label className='mb-2'>Password</label>
               <input type='password' className='w-1/3 px-3 py-2 border rounded' ref={passwordRef} />
               <button className='px-8 py-2 bg-cb-pink text-white rounded mt-5' onClick={ () => authAccount() }>Unlock</button>
